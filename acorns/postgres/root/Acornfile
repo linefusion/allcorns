@@ -1,0 +1,59 @@
+name:        "PostgreSQL"
+description: "PostgreSQL Service"
+info:        "Info"
+icon:        "./icon.svg"
+readme:      "./README.md"
+
+args: {
+  username: "postgres"
+  password: "postgres"
+}
+
+containers: {
+	postgres: {
+		image: "{{ build.image }}"
+		env: {
+      POSTGRES_USER:          "secret://username/username?onchange=no-action"
+      POSTGRES_PASSWORD:      "secret://password/token?onchange=no-action"
+      PGDATA:                 "/var/lib/postgresql/data/pgdata/data"
+      POSTGRES_INITDB_WALDIR: "/var/lib/postgresql/data/waldir"
+    }
+		dirs: {
+			"/var/lib/postgresql/data/pgdata":    "volume://pgdata"
+			"/var/lib/postgresql/data/waldir":    "volume://waldir"
+		}
+		ports: {
+			expose: "5432/tcp"
+		}
+	}
+}
+
+volumes: {
+	"pgdata": {
+		size: 10G
+	}
+	"waldir": {
+		size: 10G
+	}
+}
+
+secrets: {
+	"username": {
+		type: "opaque"
+		data: {
+			username: args.username
+		}
+	}
+	"password": {
+		type: "token"
+		params: {
+			length:     16
+			characters: "abcdefABCDEF0123456789"
+		}
+		data: {
+			token: args.password
+		}
+	}
+}
+
+

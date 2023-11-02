@@ -1,0 +1,114 @@
+name:        "Directus"
+description: "Directus Service"
+info:        "Info"
+icon:        "./icon.svg"
+readme:      "./README.md"
+
+args: {
+	scale:         1
+	publicUrl:     ""
+	domain:        "localhost.me"
+	adminEmail:    "admin@example.com"
+	adminPassword: ""
+	https:         false
+	config: {}
+}
+
+containers: {
+	directus: {
+		image: "{{ build.image }}"
+		scale: args.scale
+		env:   std.merge(
+			std.merge(localData.defaultEnv, {
+				KEY:            "secret://key/token"
+				SECRET:         "secret://secret/token"
+				PUBLIC_URL:     "secret://public-url/value"
+				ADMIN_EMAIL:    "secret://admin-email/email?onchange=no-action"
+				ADMIN_PASSWORD: "secret://admin-password/token?onchange=no-action"
+			}), args.config,
+			)
+		files: {
+			"/directus/.env": "secret://config/template"
+		}
+		dirs: {
+			"/directus/uploads":    "volume://uploads"
+			"/directus/database":   "volume://database"
+			"/directus/extensions": "volume://extensions"
+		}
+		ports: {
+			expose: "8055/http"
+			publish: [
+				"\(args.domain):8055/http",
+			]
+		}
+	}
+}
+
+volumes: {
+	"uploads": {
+		size: 1G
+	}
+	"database": {
+		size: 1G
+	}
+	"extensions": {
+		size: 1G
+	}
+}
+
+secrets: {
+	"key": type:    "token"
+	"secret": type: "token"
+	"admin-email": {
+		type: "opaque"
+		data: {
+			email: args.adminEmail
+		}
+	}
+	"admin-password": {
+		type: "token"
+		params: {
+			length:     10
+			characters: "abcdefABCDEF0123456789"
+		}
+		data: {
+			token: args.adminPassword
+		}
+	}
+	"public-url": {
+		type: "opaque"
+		data: {
+			value: std.ifelse(
+				args.publicUrl != "",
+				args.publicUrl,
+				std.ifelse(args.https, "https", "http") + "://\(args.domain)",
+				)
+		}
+	}
+	"config": {
+		type: "template"
+		data: {
+			template: std.join([for key, value in args.config {"\(key)=\(value)"}], "\n")
+		}
+	}
+}
+
+localData: {
+	defaultEnv: {
+		if args.dev {
+			EXTENSIONS_AUTO_RELOAD: "true"
+			CHOKIDAR_USEPOLLING:    "1"
+			CHOKIDAR_INTERVAL:      "1000"
+		}
+		CACHE_ENABLED:            "true"
+		CACHE_AUTO_PURGE:         "true"
+		CACHE_STORE:              std.ifelse(args.scale > 1, "redis", "memory")
+		MESSENGER_STORE:          std.ifelse(args.scale > 1, "redis", "memory")
+		RATE_LIMITER_STORE:       std.ifelse(args.scale > 1, "redis", "memory")
+		SYNCHRONIZATION_STORE:    std.ifelse(args.scale > 1, "redis", "memory")
+		WEBSOCKETS_ENABLED:       "true"
+		PRESSURE_LIMITER_ENABLED: "false"
+		MAX_PAYLOAD_SIZE:         "100mb"
+	}
+	config: std.merge({}, args.config)
+}

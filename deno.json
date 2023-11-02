@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "build": "deno run -A ./lib/cmd/build.ts",
+    "watch": "tsc -p . --watch"
+  },
+  "imports": {
+    "allcorns/": "./lib/"
+  }
+}

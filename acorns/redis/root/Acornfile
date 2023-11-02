@@ -1,0 +1,17 @@
+name:        "Redis"
+description: "Redis Service"
+info:        "Info"
+icon:        "./icon.svg"
+readme:      "./README.md"
+
+args: {
+}
+
+containers: {
+	redis: {
+    image: "{{ build.image }}"
+    ports: {
+      expose: "6379/tcp"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+name:        "SQLServer"
+description: "SQLServer Service"
+info:        "Info"
+icon:        "./icon.svg"
+readme:      "./README.md"
+
+args: {
+	password: ""
+	edition:  "Developer"
+}
+
+containers: {
+	sqlserver: {
+		image: "{{ build.image }}"
+		env: {
+			MSSQL_PID:           args.edition
+			ACCEPT_EULA:         "y"
+			MSSQL_SA_PASSWORD:   "secret://password/token?onchange=no-action"
+			MSSQL_AGENT_ENABLED: "true"
+			MSSQL_BACKUP_DIR:    "/var/opt/mssql/backups"
+		}
+		dirs: {
+			"/var/opt/mssql/data":    "volume://data?subpath=data"
+			"/var/opt/mssql/logs":    "volume://data?subpath=logs"
+			"/var/opt/mssql/secrets": "volume://data?subpath=secrets"
+			"/var/opt/mssql/backups": "volume://backups"
+		}
+		ports: {
+			expose: "1433/tcp"
+		}
+	}
+}
+
+volumes: {
+	"data": {
+		size: 10G
+	}
+	"backups": {
+		size: 10G
+	}
+}
+
+secrets: {
+	"password": {
+		type: "token"
+		params: {
+			length:     16
+			characters: "@abcdefABCDEF0123456789"
+		}
+		data: {
+			token: args.password
+		}
+	}
+}
