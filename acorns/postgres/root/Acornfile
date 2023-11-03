@@ -5,22 +5,22 @@ icon:        "./icon.svg"
 readme:      "./README.md"
 
 args: {
-  username: "postgres"
-  password: "postgres"
+	username: "postgres"
+	password: "postgres"
 }
 
 containers: {
 	postgres: {
 		image: "{{ build.image }}"
 		env: {
-      POSTGRES_USER:          "secret://username/username?onchange=no-action"
-      POSTGRES_PASSWORD:      "secret://password/token?onchange=no-action"
-      PGDATA:                 "/var/lib/postgresql/data/pgdata/data"
-      POSTGRES_INITDB_WALDIR: "/var/lib/postgresql/data/waldir"
-    }
+			POSTGRES_USER:          "secret://username/username?onchange=no-action"
+			POSTGRES_PASSWORD:      "secret://password/token?onchange=no-action"
+			PGDATA:                 "/var/lib/postgresql/data/pgdata/data"
+			POSTGRES_INITDB_WALDIR: "/var/lib/postgresql/data/waldir"
+		}
 		dirs: {
-			"/var/lib/postgresql/data/pgdata":    "volume://pgdata"
-			"/var/lib/postgresql/data/waldir":    "volume://waldir"
+			"/var/lib/postgresql/data/pgdata": "volume://pgdata"
+			"/var/lib/postgresql/data/waldir": "volume://waldir"
 		}
 		ports: {
 			expose: "5432/tcp"
@@ -55,5 +55,3 @@ secrets: {
 		}
 	}
 }
-
-

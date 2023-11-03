@@ -1,6 +1,10 @@
 import "allcorns/env.ts";
 
-import { fetchSemVerTags, isFullSemVer } from "allcorns/tags.ts";
+import {
+  expandSemVerTags,
+  fetchSemVerTags,
+  isFullSemVer,
+} from "allcorns/tags.ts";
 import { defineAcorn } from "allcorns/contracts/config.ts";
 import { defineBuilds, createMatrix } from "allcorns/contracts/builds.ts";
 
@@ -24,6 +28,7 @@ export async function fetchDirectusTags() {
         return (
           isFullSemVer(tag.tag) &&
           tag.version.major >= 10 &&
+          tag.version.minor >= 6 &&
           !tag.version.prerelease.length &&
           !tag.version.build.length
         );
@@ -39,7 +44,7 @@ export default defineAcorn(import.meta, async () => {
   const builds = defineBuilds(
     ...args.map((args) => ({
       name: `directus-${args.directusTag}`,
-      tags: [args.directusTag],
+      tags: expandSemVerTags(args.directusTag, directusTags, true),
       args: {
         build: {
           image: `directus/directus:${args.directusTag}`,

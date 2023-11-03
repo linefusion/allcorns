@@ -9,9 +9,9 @@ args: {
 
 containers: {
 	redis: {
-    image: "{{ build.image }}"
-    ports: {
-      expose: "6379/tcp"
-    }
-  }
+		image: "{{ build.image }}"
+		ports: {
+			expose: "6379/tcp"
+		}
+	}
 }

@@ -6,27 +6,22 @@ readme:      "./README.md"
 
 args: {
 	scale:         1
+	concurrency:   1
 	publicUrl:     ""
 	domain:        "localhost.me"
 	adminEmail:    "admin@example.com"
 	adminPassword: ""
 	https:         false
+	redis:         "redis://redis:6379"
+	redisDeploy:   true
 	config: {}
 }
 
 containers: {
 	directus: {
 		image: "{{ build.image }}"
-		scale: args.scale
-		env:   std.merge(
-			std.merge(localData.defaultEnv, {
-				KEY:            "secret://key/token"
-				SECRET:         "secret://secret/token"
-				PUBLIC_URL:     "secret://public-url/value"
-				ADMIN_EMAIL:    "secret://admin-email/email?onchange=no-action"
-				ADMIN_PASSWORD: "secret://admin-password/token?onchange=no-action"
-			}), args.config,
-			)
+		scale: localData.scale
+		env:   localData.env
 		files: {
 			"/directus/.env": "secret://config/template"
 		}
@@ -40,6 +35,15 @@ containers: {
 			publish: [
 				"\(args.domain):8055/http",
 			]
+		}
+	}
+}
+
+if args.redisDeploy {
+	acorns: {
+		redis: {
+			image:       "index.docker.io/allcorns/redis:7.2.2"
+			autoUpgrade: true
 		}
 	}
 }
@@ -94,21 +98,30 @@ secrets: {
 }
 
 localData: {
-	defaultEnv: {
+	scale: args.scale
+	env: {
 		if args.dev {
 			EXTENSIONS_AUTO_RELOAD: "true"
 			CHOKIDAR_USEPOLLING:    "1"
 			CHOKIDAR_INTERVAL:      "1000"
 		}
-		CACHE_ENABLED:            "true"
-		CACHE_AUTO_PURGE:         "true"
-		CACHE_STORE:              std.ifelse(args.scale > 1, "redis", "memory")
-		MESSENGER_STORE:          std.ifelse(args.scale > 1, "redis", "memory")
-		RATE_LIMITER_STORE:       std.ifelse(args.scale > 1, "redis", "memory")
-		SYNCHRONIZATION_STORE:    std.ifelse(args.scale > 1, "redis", "memory")
-		WEBSOCKETS_ENABLED:       "true"
-		PRESSURE_LIMITER_ENABLED: "false"
-		MAX_PAYLOAD_SIZE:         "100mb"
+		CACHE_ENABLED:             "true"
+		CACHE_AUTO_PURGE:          "true"
+		CACHE_STORE:               "redis"
+		MESSENGER_STORE:           "redis"
+		RATE_LIMITER_STORE:        "redis"
+		RATE_LIMITER_GLOBAL_STORE: "redis"
+		SYNCHRONIZATION_STORE:     "redis"
+		WEBSOCKETS_ENABLED:        "true"
+		PRESSURE_LIMITER_ENABLED:  "false"
+		MAX_PAYLOAD_SIZE:          "100mb"
+		KEY:                       "secret://key/token"
+		SECRET:                    "secret://secret/token"
+		PUBLIC_URL:                "secret://public-url/value"
+		ADMIN_EMAIL:               "secret://admin-email/email?onchange=no-action"
+		ADMIN_PASSWORD:            "secret://admin-password/token?onchange=no-action"
+		PM2_INSTANCES:             "\(args.concurrency)"
+		REDIS:                     "\(args.redis)"
 	}
 	config: std.merge({}, args.config)
 }

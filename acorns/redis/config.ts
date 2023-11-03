@@ -1,4 +1,8 @@
-import { expandSemVerTags, fetchSemVerTags } from "allcorns/tags.ts";
+import {
+  expandSemVerTags,
+  fetchSemVerTags,
+  isFullSemVer,
+} from "allcorns/tags.ts";
 import { defineAcorn } from "allcorns/contracts/config.ts";
 import { defineBuilds, createMatrix } from "allcorns/contracts/builds.ts";
 
@@ -19,7 +23,13 @@ export async function fetchRedisTags() {
   const tags = Allcorns.testing
     ? testTags
     : (await fetchSemVerTags("redis")).filter((tag) => {
-        return tag.version.major >= 6;
+        return (
+          isFullSemVer(tag.tag) &&
+          tag.version.major >= 7 &&
+          tag.version.minor >= 2 &&
+          !tag.version.prerelease.length &&
+          !tag.version.build.length
+        );
       });
 
   return tags.map((tag) => tag.tag);
@@ -32,7 +42,7 @@ export default defineAcorn(import.meta, async () => {
   const builds = defineBuilds(
     ...matrix.map((values) => ({
       name: `redis-${values.redisTag}`,
-      tags: expandSemVerTags(values.redisTag),
+      tags: expandSemVerTags(values.redisTag, redisTags, true),
       args: {
         build: {
           image: `redis:${values.redisTag}`,

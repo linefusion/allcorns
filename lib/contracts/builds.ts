@@ -61,38 +61,42 @@ export function createMatrix<const T extends object>(
 
 export function defineBuilds(...builds: Build[]) {
   const tagRegistry: Record<string, boolean> = {};
-  builds = builds.map((build) => {
-    if (!build.tags?.length) {
-      throw new Error("Invalid build tags");
-    }
-
-    for (const tag of build.tags) {
-      if (tagRegistry[tag]) {
-        throw new Error(
-          `Duplicate build tag "${tag}" in Acorn "${
-            build.name
-          }".\n${Deno.inspect(builds)}`
-        );
+  builds = builds
+    .filter((build) => {
+      if (!build.tags?.length) {
+        console.log(`skipped build ${build.name} because it has no tags`);
+        return false;
       }
-    }
+      return true;
+    })
+    .map((build) => {
+      for (const tag of build.tags) {
+        if (tagRegistry[tag]) {
+          throw new Error(
+            `Duplicate build tag "${tag}" in Acorn "${
+              build.name
+            }".\n${Deno.inspect(builds)}`
+          );
+        }
+      }
 
-    if (typeof build.args !== "object" || Array.isArray(build.args)) {
-      throw new Error(`Invalid build args format.`);
-    }
+      if (typeof build.args !== "object" || Array.isArray(build.args)) {
+        throw new Error(`Invalid build args format.`);
+      }
 
-    for (const tag of build.tags) {
-      tagRegistry[tag] = true;
-    }
+      for (const tag of build.tags) {
+        tagRegistry[tag] = true;
+      }
 
-    return {
-      name: build.name,
-      tags: build.tags,
-      root: build.root || "./root",
-      acornfile: build.acornfile || "./Acornfile",
-      // registry: build.registry || "docker.io",
-      args: build.args || {},
-    };
-  });
+      return {
+        name: build.name,
+        tags: build.tags,
+        root: build.root || "./root",
+        acornfile: build.acornfile || "./Acornfile",
+        // registry: build.registry || "docker.io",
+        args: build.args || {},
+      };
+    });
 
   return builds;
 }

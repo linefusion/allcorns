@@ -4,6 +4,7 @@ import {
   compare as semverCompare,
   parse as semverParse,
   isSemVer as semverIsSemVer,
+  format as semverFormat,
 } from "https://deno.land/std@0.200.0/semver/mod.ts";
 import { SemVer } from "https://deno.land/std@0.200.0/semver/types.ts";
 import { RegistryClientV2 } from "https://deno.land/x/docker_registry_client@v0.4.1/registry-client-v2.ts";
@@ -16,6 +17,7 @@ export const $ = {
   semverCompare,
   semverParse,
   semverIsSemVer,
+  semverFormat,
   RegistryClientV2,
   tryParseSemVer,
   inferSemVer,
@@ -85,60 +87,75 @@ export async function fetchSemVerTags(name: string, registry?: string) {
     .sort((a, b) => $.semverCompare(a.version, b.version));
 }
 
-export function expandSemVerTags(tag: string | SemVer) {
+export function expandSemVerTags(
+  tag: string | SemVer,
+  tags: string[] = [],
+  withLatest = false
+) {
   if (typeof tag === "string") {
     if (!isSemVerLike) {
       throw new Error("Tag has invalid semver format.");
     }
     tag = $.semverParse($.inferSemVer(tag));
   }
-  return [
-    `${tag.major}`,
-    `${tag.major}.${tag.minor}`,
-    `${tag.major}.${tag.minor}.${tag.patch}`,
-  ];
+
+  const list: string[] = [];
+
+  if (tags && tags?.length > 0) {
+    const versions = Array.from(
+      new Set(
+        tags
+          .filter($.isSemVerLike)
+          .map($.inferSemVer)
+          .map($.semverParse)
+          .map((version) => ({
+            ...version,
+            toString() {
+              return $.semverFormat(version, "full");
+            },
+          }))
+      )
+    )
+      .sort($.semverCompare)
+      .reverse();
+
+    let latest = true;
+    const existingTags = new Set();
+
+    for (const version of versions) {
+      const current = [
+        `${version.major}`,
+        `${version.major}.${version.minor}`,
+        `${version.major}.${version.minor}.${version.patch}`,
+      ];
+
+      if ($.semverCompare(version, tag) !== 0) {
+        latest = false;
+        for (const tag of current) {
+          existingTags.add(tag);
+        }
+        continue;
+      }
+
+      for (const tag of current) {
+        if (!existingTags.has(tag)) {
+          list.push(tag);
+        }
+      }
+
+      if (withLatest && latest) {
+        list.push("latest");
+      }
+      break;
+    }
+  } else {
+    list.push(`${tag.major}`);
+    list.push(`${tag.major}.${tag.minor}`);
+    list.push(`${tag.major}.${tag.minor}.${tag.patch}`);
+    if (withLatest) {
+      list.push("latest");
+    }
+  }
+
+  return list;
 }
-
-// TODO: make a function to return a smarter tag distribution, like:
-/*
-  [
-    [ "14", "14.0", "14.0.0" ],
-    [ "14", "14.1", "14.1.0" ],
-    [ "14", "14.2", "14.2.0" ],
-    [ "14", "14.3", "14.3.0" ],
-    [ "14", "14.4", "14.4.0" ],
-    [ "14", "14.5", "14.5.0" ],
-    [ "14", "14.6", "14.6.0" ],
-    [ "14", "14.7", "14.7.0" ],
-    [ "14", "14.8", "14.8.0" ],
-    [ "14", "14.9", "14.9.0" ],
-    [ "15", "15.0", "15.0.0" ],
-    [ "15", "15.1", "15.1.0" ],
-    [ "15", "15.2", "15.2.0" ],
-    [ "15", "15.3", "15.3.0" ],
-    [ "15", "15.4", "15.4.0" ],
-    [ "16", "16.0", "16.0.0" ]
-  ]
-
-  ->
-
-  [
-    [ "14.0", "14.0.0" ],
-    [ "14.1", "14.1.0" ],
-    [ "14.2", "14.2.0" ],
-    [ "14.3", "14.3.0" ],
-    [ "14.4", "14.4.0" ],
-    [ "14.5", "14.5.0" ],
-    [ "14.6", "14.6.0" ],
-    [ "14.7", "14.7.0" ],
-    [ "14.8", "14.8.0" ],
-    [ "14", "14.9", "14.9.0" ],
-    [ "15.0", "15.0.0" ],
-    [ "15.1", "15.1.0" ],
-    [ "15.2", "15.2.0" ],
-    [ "15.3", "15.3.0" ],
-    [ "15", "15.4", "15.4.0" ],
-    [ "16", "16.0", "16.0.0" ]
-  ]
-
-  */
